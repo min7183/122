@@ -18,7 +18,7 @@ def import_data(folder_name):
         for table in drop_tables:
             cursor.execute(f"DROP TABLE IF EXISTS {table};")
         
-        # Create tables in dependency order.
+        # Create tables.
         # 1. users table.
         # CSV order: uid, email, joined_date, nickname, street, city, state, `zip`, genres
         cursor.execute("""
@@ -112,7 +112,7 @@ def import_data(folder_name):
                 uid INT,
                 rid INT,
                 rating DECIMAL(3,1),
-                body TEXT,
+                comment TEXT,
                 posted_at DATETIME,
                 FOREIGN KEY (uid) REFERENCES viewers(uid) ON DELETE CASCADE,
                 FOREIGN KEY (rid) REFERENCES releases(rid) ON DELETE CASCADE
@@ -138,8 +138,7 @@ def import_data(folder_name):
         
         cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
         
-        # Import CSV data in order that satisfies foreign key dependencies.
-        # Order: users, viewers, producers, releases, series, movies, videos, reviews, sessions.
+        # Import CSV data.
         tables_for_import = ["users", "viewers", "producers", "releases", "series", "movies", "videos", "reviews", "sessions"]
         for table in tables_for_import:
             csv_path = os.path.join(folder_name, f"{table}.csv")
@@ -150,7 +149,6 @@ def import_data(folder_name):
                 # Skip header row.
                 next(csv_reader, None)
                 for row in csv_reader:
-                    # Replace empty strings with None.
                     row = [None if field == '' else field for field in row]
                     placeholders = ", ".join(["%s"] * len(row))
                     query = f"INSERT INTO {table} VALUES ({placeholders})"
@@ -165,16 +163,16 @@ def import_data(folder_name):
         cursor.close()
         conn.close()
 
-def insert_viewer(uid, email, joined_date, nickname, street, city, state, zip_code, genres, first_name, last_name, subscription):
+def insert_viewer(uid, email, nickname, street, city, state, zip_code, genres, joined_date, first_name, last_name, subscription):
     """
     Inserts a new viewer.
-    Inserts a record into users and then into viewers.
-    CSV order for users: uid,email,joined_date,nickname,street,city,state,zip,genres
-    CSV order for viewers: uid,subscription,first_name,last_name
+    Command order: uid, email, nickname, street, city, state, zip, genres, joined_date, first_name, last_name, subscription
+    Note: Users table requires order: uid, email, joined_date, nickname, street, city, state, `zip`, genres
     """
     conn = connect_db()
     cursor = conn.cursor()
     try:
+        # Rearranging parameters for the users table.
         cursor.execute("""
             INSERT INTO users (uid, email, joined_date, nickname, street, city, state, `zip`, genres)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -196,7 +194,8 @@ def insert_viewer(uid, email, joined_date, nickname, street, city, state, zip_co
 
 def add_genre(uid, genre):
     """
-    Adds a new genre to a user's genres (semicolon separated) in the users table.
+    Adds a new genre to the user's genres field in the users table.
+    If the genre already exists (case-insensitively), output "Fail".
     """
     conn = connect_db()
     cursor = conn.cursor()
@@ -208,7 +207,7 @@ def add_genre(uid, genre):
             if current_genres:
                 genres_list = [g.strip() for g in current_genres.split(';')]
                 if genre.lower() in [g.lower() for g in genres_list]:
-                    print("Success")
+                    print("Fail")
                     return
                 updated_genres = current_genres + ";" + genre
             else:
@@ -246,7 +245,7 @@ def delete_viewer(uid):
 
 def insert_movie(rid, website_url):
     """
-    Inserts a new movie record into movies.
+    Inserts a new movie record.
     """
     conn = connect_db()
     cursor = conn.cursor()
@@ -283,7 +282,7 @@ def insert_session(sid, uid, rid, ep_num, initiate_at, leave_at, quality, device
 
 def update_release(rid, title):
     """
-    Updates the title of a release in releases.
+    Updates the title of a release.
     """
     conn = connect_db()
     cursor = conn.cursor()
@@ -403,7 +402,6 @@ def active_viewer(n, start_date, end_date):
         cursor.close()
         conn.close()
     
-    # Print exactly the results with no extra newline if empty.
     sys.stdout.write("\n".join(output_lines))
 
 def videos_viewed(rid):
@@ -421,7 +419,7 @@ def videos_viewed(rid):
             LEFT JOIN sessions s ON v.rid = s.rid AND v.ep_num = s.ep_num
             WHERE v.rid = %s
             GROUP BY v.rid, v.ep_num, v.title, v.length
-            ORDER BY v.rid DESC, v.ep_num ASC
+            ORDER BY v.ep_num ASC
         """, (rid,))
         results = cursor.fetchall()
         if results:
@@ -445,7 +443,7 @@ def handle_command():
     if command == "import":
         import_data(args[0])
     elif command == "insertViewer":
-        # Expected order: uid, email, joined_date, nickname, street, city, state, zip, genres, first_name, last_name, subscription
+        # Expected order: uid, email, nickname, street, city, state, zip, genres, joined_date, first_name, last_name, subscription
         insert_viewer(int(args[0]), args[1], args[2], args[3], args[4], args[5],
                       args[6], args[7], args[8], args[9], args[10], args[11])
     elif command == "addGenre":
