@@ -436,7 +436,6 @@ def videos_viewed(rid):
         conn.close()
 
 
-
 def handle_command():
     if len(sys.argv) < 2:
         print("Invalid command.")
