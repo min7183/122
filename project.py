@@ -297,11 +297,12 @@ def release_title(sid):
 def active_viewer(n, start_date, end_date):
     conn = connect_db()
     cursor = conn.cursor()
+    output_lines = []
     try:
         cursor.execute("""
             SELECT v.uid, v.first, v.last
             FROM Viewer v
-            JOIN Session s ON v.uid = s.uid
+            JOIN `Session` s ON v.uid = s.uid
             WHERE s.initiate_at BETWEEN %s AND %s
             GROUP BY v.uid, v.first, v.last
             HAVING COUNT(s.sid) >= %s
@@ -309,12 +310,17 @@ def active_viewer(n, start_date, end_date):
         """, (start_date, end_date, n))
         results = cursor.fetchall()
         for row in results:
-            print(",".join(str(item) if item is not None else "NULL" for item in row))
+            # Create a comma-separated line for each row
+            output_lines.append(",".join(str(item) if item is not None else "NULL" for item in row))
     except mysql.connector.Error as err:
+        # For query functions, if there's an error, you may want to print nothing
         pass
     finally:
         cursor.close()
         conn.close()
+    
+    # Write the output without adding an extra newline if output_lines is empty.
+    sys.stdout.write("\n".join(output_lines))
 
 def videos_viewed(rid):
     conn = connect_db()
