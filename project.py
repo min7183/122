@@ -368,21 +368,41 @@ def active_viewer(n, start_date, end_date):
     """
     conn = connect_db()
     cursor = conn.cursor()
+    cursor.execute("SELECT * FROM viewers;")
+    results = cursor.fetchall()
+    for row in results:
+        print(row)
+    cursor.close()
+    conn.close()
+    
+    conn = connect_db()
+    cursor = conn.cursor()
     output_lines = []
     try:
         cursor.execute("""
             SELECT v.uid, v.first_name, v.last_name
-            FROM viewers v
-            JOIN sessions s ON v.uid = s.uid
-            WHERE s.initiate_at BETWEEN %s AND %s
-            GROUP BY v.uid, v.first_name, v.last_name
-            HAVING COUNT(s.sid) >= %s
-            ORDER BY v.uid ASC
-        """, (start_date, end_date, n))
+FROM viewers v
+JOIN sessions s ON v.uid = s.uid
+WHERE s.initiate_at BETWEEN '2024-11-01 00:00:00' AND '2025-02-01 00:00:00'
+GROUP BY v.uid, v.first_name, v.last_name
+HAVING COUNT(s.sid) >= 2
+ORDER BY v.uid ASC;""")
         results = cursor.fetchall()
-        for row in results:
-            print(",".join(str(item) if item is not None else "NULL" for item in row))
-        print(n, start_date, end_date)
+        print(results)
+    # try:
+    #     cursor.execute("""
+    #         SELECT v.uid, v.first_name, v.last_name
+    #         FROM viewers v
+    #         JOIN sessions s ON v.uid = s.uid
+    #         WHERE s.initiate_at BETWEEN %s AND %s
+    #         GROUP BY v.uid, v.first_name, v.last_name
+    #         HAVING COUNT(s.sid) >= %s
+    #         ORDER BY v.uid ASC
+    #     """, (start_date, end_date, n))
+    #     results = cursor.fetchall()
+    #     for row in results:
+    #         print(",".join(str(item) if item is not None else "NULL" for item in row))
+    #     print(n, start_date, end_date)
 
     except mysql.connector.Error as err:
         print("Fail")
