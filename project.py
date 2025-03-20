@@ -187,7 +187,7 @@ def insert_viewer(uid, email, nickname, street, city, state, zip_code, genres, j
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail", err)
+        print("Fail")
     finally:
         cursor.close()
         conn.close()
@@ -275,7 +275,7 @@ def insert_session(sid, uid, rid, ep_num, initiate_at, leave_at, quality, device
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail", err)
+        print("Fail")
     finally:
         cursor.close()
         conn.close()
@@ -334,7 +334,7 @@ def popular_release(n):
             FROM releases r
             LEFT JOIN reviews rev ON r.rid = rev.rid
             GROUP BY r.rid, r.title
-            ORDER BY reviewCount DESC, r.rid ASC
+            ORDER BY reviewCount DESC, r.rid DESC
             LIMIT %s
         """, (n,))
         results = cursor.fetchall()
