@@ -381,7 +381,7 @@ def active_viewer(n, start_date, end_date):
         """, (start_date, end_date, n))
         results = cursor.fetchall()
         for row in results:
-            output_lines.append(",".join(str(item) if item is not None else "NULL" for item in row))
+            print(",".join(str(item) if item is not None else "NULL" for item in row))
         # print(n, start_date, end_date)
 
     except mysql.connector.Error as err:
