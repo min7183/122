@@ -16,8 +16,7 @@ def import_data(folder_name):
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         
         # Drop existing tables in the correct order to handle dependencies
-        tables = ["Viewer", "Release", "TVShow", "Movie", "Video", "Review", "Session"]
-
+        tables = ["SessionOn", "Sessions", "Reviews", "Videos", "Movies", "Series", "Releases", "Viewers", "Producers", "Users"]
         for table in tables:
             cursor.execute(f"DROP TABLE IF EXISTS {table};")
         
