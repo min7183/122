@@ -10,7 +10,7 @@ def import_data(folder_name):
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        # Disable foreign key checks while dropping/creating tables.
+        # Disable FK checks while dropping/creating tables.
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         
         # Drop tables in reverse dependency order.
@@ -20,21 +20,23 @@ def import_data(folder_name):
         
         # Create tables in dependency order.
         # 1. users table.
+        # CSV order: uid, email, joined_date, nickname, street, city, state, `zip`, genres
         cursor.execute("""
             CREATE TABLE users (
                 uid INT PRIMARY KEY,
                 email VARCHAR(255) UNIQUE NOT NULL,
+                joined_date DATE,
                 nickname VARCHAR(255),
                 street VARCHAR(255),
                 city VARCHAR(255),
                 state VARCHAR(255),
                 `zip` VARCHAR(255),
-                genres VARCHAR(255),
-                joined_date DATE
+                genres VARCHAR(255)
             );
         """)
         
         # 2. viewers table.
+        # CSV: uid, subscription, first_name, last_name
         cursor.execute("""
             CREATE TABLE viewers (
                 uid INT PRIMARY KEY,
@@ -46,35 +48,41 @@ def import_data(folder_name):
         """)
         
         # 3. producers table.
+        # CSV: uid, bio, company
         cursor.execute("""
             CREATE TABLE producers (
                 uid INT PRIMARY KEY,
-                company VARCHAR(255),
                 bio TEXT,
+                company VARCHAR(255),
                 FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
             );
         """)
         
         # 4. releases table.
+        # CSV: rid, producer_uid, title, genre, release_date
         cursor.execute("""
             CREATE TABLE releases (
                 rid INT PRIMARY KEY,
+                producer_uid INT,
                 title VARCHAR(255) NOT NULL,
                 genre VARCHAR(255),
-                released_date DATE
+                release_date DATE,
+                FOREIGN KEY (producer_uid) REFERENCES producers(uid) ON DELETE CASCADE
             );
         """)
         
         # 5. series table.
+        # CSV: rid, introduction
         cursor.execute("""
             CREATE TABLE series (
                 rid INT PRIMARY KEY,
-                seasons INT,
+                introduction TEXT,
                 FOREIGN KEY (rid) REFERENCES releases(rid) ON DELETE CASCADE
             );
         """)
         
         # 6. movies table.
+        # CSV: rid, website_url
         cursor.execute("""
             CREATE TABLE movies (
                 rid INT PRIMARY KEY,
@@ -84,6 +92,7 @@ def import_data(folder_name):
         """)
         
         # 7. videos table.
+        # CSV: rid, ep_num, title, length
         cursor.execute("""
             CREATE TABLE videos (
                 rid INT,
@@ -96,20 +105,22 @@ def import_data(folder_name):
         """)
         
         # 8. reviews table.
+        # CSV: rvid, uid, rid, rating, body, posted_at
         cursor.execute("""
             CREATE TABLE reviews (
+                rvid INT PRIMARY KEY,
                 uid INT,
                 rid INT,
                 rating DECIMAL(3,1),
-                comment TEXT,
-                created_at DATETIME,
-                PRIMARY KEY (uid, rid),
+                body TEXT,
+                posted_at DATETIME,
                 FOREIGN KEY (uid) REFERENCES viewers(uid) ON DELETE CASCADE,
                 FOREIGN KEY (rid) REFERENCES releases(rid) ON DELETE CASCADE
             );
         """)
         
         # 9. sessions table.
+        # CSV: sid, uid, rid, ep_num, initiate_at, leave_at, quality, device
         cursor.execute("""
             CREATE TABLE sessions (
                 sid INT PRIMARY KEY,
@@ -127,7 +138,8 @@ def import_data(folder_name):
         
         cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
         
-        # Import CSV data.
+        # Import CSV data in order that satisfies foreign key dependencies.
+        # Order: users, viewers, producers, releases, series, movies, videos, reviews, sessions.
         tables_for_import = ["users", "viewers", "producers", "releases", "series", "movies", "videos", "reviews", "sessions"]
         for table in tables_for_import:
             csv_path = os.path.join(folder_name, f"{table}.csv")
@@ -148,43 +160,43 @@ def import_data(folder_name):
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        # Print the error message to help diagnose the issue.
         print("Fail", err)
     finally:
         cursor.close()
         conn.close()
-        
-def insert_viewer(uid, email, nickname, street, city, state, zip_code, genres, joined_date, first, last, subscription):
+
+def insert_viewer(uid, email, joined_date, nickname, street, city, state, zip_code, genres, first_name, last_name, subscription):
     """
-    Inserts a new viewer by adding a record to both the users and viewers tables.
+    Inserts a new viewer.
+    Inserts a record into users and then into viewers.
+    CSV order for users: uid,email,joined_date,nickname,street,city,state,zip,genres
+    CSV order for viewers: uid,subscription,first_name,last_name
     """
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        # Insert into users.
         cursor.execute("""
-            INSERT INTO users (uid, email, nickname, street, city, state, zip, genres, joined_date)
+            INSERT INTO users (uid, email, joined_date, nickname, street, city, state, `zip`, genres)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (uid, email, nickname, street, city, state, zip_code, genres, joined_date))
+        """, (uid, email, joined_date, nickname, street, city, state, zip_code, genres))
         
-        # Then insert into viewers.
         cursor.execute("""
             INSERT INTO viewers (uid, subscription, first_name, last_name)
             VALUES (%s, %s, %s, %s)
-        """, (uid, subscription, first, last))
+        """, (uid, subscription, first_name, last_name))
         
         conn.commit()
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail")
+        print("Fail", err)
     finally:
         cursor.close()
         conn.close()
 
 def add_genre(uid, genre):
     """
-    Adds a new genre to a user's genres field (semicolon separated).
+    Adds a new genre to a user's genres (semicolon separated) in the users table.
     """
     conn = connect_db()
     cursor = conn.cursor()
@@ -208,34 +220,33 @@ def add_genre(uid, genre):
             print("Fail")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail")
+        print("Fail", err)
     finally:
         cursor.close()
         conn.close()
 
 def delete_viewer(uid):
     """
-    Deletes a viewer. This removes the record from viewers and (if needed) from users.
+    Deletes a viewer.
+    Deletes from viewers and then from users.
     """
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        # Delete from viewers (which cascades from users if defined accordingly).
         cursor.execute("DELETE FROM viewers WHERE uid = %s", (uid,))
-        # Optionally, delete from users if the viewer record is separate.
         cursor.execute("DELETE FROM users WHERE uid = %s", (uid,))
         conn.commit()
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail")
+        print("Fail", err)
     finally:
         cursor.close()
         conn.close()
 
 def insert_movie(rid, website_url):
     """
-    Inserts a new movie record.
+    Inserts a new movie record into movies.
     """
     conn = connect_db()
     cursor = conn.cursor()
@@ -245,7 +256,7 @@ def insert_movie(rid, website_url):
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail")
+        print("Fail", err)
     finally:
         cursor.close()
         conn.close()
@@ -265,14 +276,14 @@ def insert_session(sid, uid, rid, ep_num, initiate_at, leave_at, quality, device
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail")
+        print("Fail", err)
     finally:
         cursor.close()
         conn.close()
 
 def update_release(rid, title):
     """
-    Updates the title of a release.
+    Updates the title of a release in releases.
     """
     conn = connect_db()
     cursor = conn.cursor()
@@ -282,7 +293,7 @@ def update_release(rid, title):
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail")
+        print("Fail", err)
     finally:
         cursor.close()
         conn.close()
@@ -290,7 +301,7 @@ def update_release(rid, title):
 def list_releases(uid):
     """
     Lists all unique releases reviewed by a given viewer (uid) in ascending order by release title.
-    Output format: rid, genre, title
+    Output: rid, genre, title
     """
     conn = connect_db()
     cursor = conn.cursor()
@@ -314,7 +325,7 @@ def list_releases(uid):
 def popular_release(n):
     """
     Lists the top N releases that have the most reviews.
-    Output format: rid, title, reviewCount
+    Output: rid, title, reviewCount
     """
     conn = connect_db()
     cursor = conn.cursor()
@@ -338,8 +349,8 @@ def popular_release(n):
 
 def release_title(sid):
     """
-    Given a session id, finds the release (and corresponding video) associated with that session.
-    Output format: rid, release_title, genre, video_title, ep_num, length
+    Given a session id, finds the release and corresponding video.
+    Output: rid, release_title, genre, video_title, ep_num, length
     """
     conn = connect_db()
     cursor = conn.cursor()
@@ -359,7 +370,7 @@ def release_title(sid):
         else:
             print("Fail")
     except mysql.connector.Error as err:
-        print("Fail")
+        print("Fail", err)
     finally:
         cursor.close()
         conn.close()
@@ -367,13 +378,11 @@ def release_title(sid):
 def active_viewer(n, start_date, end_date):
     """
     Lists all active viewers who have started at least n sessions between start_date and end_date.
-    Output format: uid, first_name, last_name (from viewers)
+    Output: uid, first_name, last_name
     """
-
     conn = connect_db()
     cursor = conn.cursor()
     output_lines = []
-
     try:
         cursor.execute("""
             SELECT v.uid, v.first_name, v.last_name
@@ -386,31 +395,28 @@ def active_viewer(n, start_date, end_date):
         """, (start_date, end_date, n))
         results = cursor.fetchall()
         for row in results:
-            print(",".join(str(item) if item is not None else "NULL" for item in row))
-        print(n, start_date, end_date)
-
+            output_lines.append(",".join(str(item) if item is not None else "NULL" for item in row))
     except mysql.connector.Error as err:
-        print("Fail")
+        print("Fail", err)
         return
     finally:
         cursor.close()
         conn.close()
     
-    # Print exactly the result (no extra newline if empty).
-    # sys.stdout.write("\n".join(output_lines))
+    # Print exactly the results with no extra newline if empty.
+    sys.stdout.write("\n".join(output_lines))
 
 def videos_viewed(rid):
     """
     For a given video (by its release id), counts the number of unique viewers that have started a session on it.
-    Output format: rid, ep_num, title, length, COUNT
+    Output: rid, ep_num, title, length, viewer_count
     If no sessions exist for the video, output "Fail".
     """
     conn = connect_db()
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            SELECT v.rid, v.ep_num, v.title, v.length, 
-                   COUNT(DISTINCT s.uid) as viewer_count
+            SELECT v.rid, v.ep_num, v.title, v.length, COUNT(DISTINCT s.uid) as viewer_count
             FROM videos v
             LEFT JOIN sessions s ON v.rid = s.rid AND v.ep_num = s.ep_num
             WHERE v.rid = %s
@@ -424,7 +430,7 @@ def videos_viewed(rid):
         else:
             print("Fail")
     except mysql.connector.Error as err:
-        print("Fail")
+        print("Fail", err)
     finally:
         cursor.close()
         conn.close()
@@ -439,7 +445,7 @@ def handle_command():
     if command == "import":
         import_data(args[0])
     elif command == "insertViewer":
-        # Expected: uid, email, nickname, street, city, state, zip, genres, joined_date, first_name, last_name, subscription
+        # Expected order: uid, email, joined_date, nickname, street, city, state, zip, genres, first_name, last_name, subscription
         insert_viewer(int(args[0]), args[1], args[2], args[3], args[4], args[5],
                       args[6], args[7], args[8], args[9], args[10], args[11])
     elif command == "addGenre":
