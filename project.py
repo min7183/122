@@ -12,7 +12,7 @@ def import_data(folder_name):
     try:
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         # Drop tables in order that respects dependencies
-        tables = ["Session", "Review", "Video", "Movie", "TVShow", "`Release`", "Viewer"]
+        tables = ["Session", "Review", "Video", "Movie", "TVShow", "`Release`", "viewers"]
         for table in tables:
             cursor.execute(f"DROP TABLE IF EXISTS {table};")
         
@@ -129,7 +129,7 @@ def insert_viewer(uid, email, nickname, street, city, state, zip_code, genres, j
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            INSERT INTO Viewer (uid, email, nickname, street, city, state, zip, genres, joined_date, first, last, subscription)
+            INSERT INTO viewer (uid, email, nickname, street, city, state, zip, genres, joined_date, first, last, subscription)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (uid, email, nickname, street, city, state, zip_code, genres, joined_date, first, last, subscription))
         conn.commit()
@@ -301,7 +301,7 @@ def active_viewer(n, start_date, end_date):
     try:
         cursor.execute("""
             SELECT v.uid, v.first, v.last
-            FROM Viewer v
+            FROM viewer v
             JOIN `Session` s ON v.uid = s.uid
             WHERE s.initiate_at BETWEEN %s AND %s
             GROUP BY v.uid, v.first, v.last
@@ -314,13 +314,13 @@ def active_viewer(n, start_date, end_date):
             output_lines.append(",".join(str(item) if item is not None else "NULL" for item in row))
     except mysql.connector.Error as err:
         # For query functions, if there's an error, you may want to print nothing
-        pass
+        print("Fail")
     finally:
         cursor.close()
         conn.close()
     
     # Write the output without adding an extra newline if output_lines is empty.
-    sys.stdout.write("\n".join(output_lines))
+    # sys.stdout.write("\n".join(output_lines))
 
 def videos_viewed(rid):
     conn = connect_db()
