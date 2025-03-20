@@ -16,7 +16,7 @@ def import_data(folder_name):
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         
         # Drop existing tables
-        tables = ["Session", "Review", "Video", "Movie", "TVShow", "Release", "Viewer"]
+        tables = ["Viewer", "Release", "TVShow", "Movie", "Video", "Review", "Session"]
         for table in tables:
             cursor.execute(f"DROP TABLE IF EXISTS {table};")
         
