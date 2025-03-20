@@ -158,7 +158,7 @@ def import_data(folder_name):
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail", err)
+        print("Fail")
     finally:
         cursor.close()
         conn.close()
