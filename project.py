@@ -12,7 +12,7 @@ def import_data(folder_name):
     cursor = conn.cursor()
     
     try:
-        # Clear existing tables and create new ones
+        # Disable foreign key checks for dropping and creating tables
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         
         # Drop existing tables in the correct order to handle dependencies
@@ -136,7 +136,7 @@ def import_data(folder_name):
             if not os.path.exists(csv_path):
                 continue
             
-            with open(csv_path, 'r') as csvfile:
+            with open(csv_path, 'r', newline='') as csvfile:
                 csv_reader = csv.reader(csvfile)
                 for row in csv_reader:
                     # Replace empty strings with None
@@ -191,7 +191,7 @@ def add_genre(uid, genre):
         if result:
             current_genres = result[0]
             if current_genres:
-                # Check if genre already exists
+                # Check if genre already exists (case-insensitive)
                 genres_list = current_genres.split(';')
                 if genre.lower() not in [g.lower() for g in genres_list]:
                     updated_genres = current_genres + ";" + genre
@@ -220,10 +220,8 @@ def delete_viewer(uid):
     try:
         # First delete from Viewers table (child)
         cursor.execute("DELETE FROM Viewers WHERE uid = %s", (uid,))
-        
         # Then delete from Users table (parent)
         cursor.execute("DELETE FROM Users WHERE uid = %s", (uid,))
-        
         conn.commit()
         print("Success")
     except mysql.connector.Error as err:
@@ -299,11 +297,10 @@ def list_releases(uid):
         """, (uid,))
         
         results = cursor.fetchall()
-        if results:
-            for row in results:
-                print(",".join(str(item) if item is not None else "NULL" for item in row))
+        for row in results:
+            print(",".join(str(item) if item is not None else "NULL" for item in row))
     except mysql.connector.Error as err:
-        print("Fail")
+        pass  # Do not print "Fail" for query functions
     finally:
         cursor.close()
         conn.close()
@@ -322,11 +319,10 @@ def popular_release(n):
         """, (n,))
         
         results = cursor.fetchall()
-        if results:
-            for row in results:
-                print(",".join(str(item) if item is not None else "NULL" for item in row))
+        for row in results:
+            print(",".join(str(item) if item is not None else "NULL" for item in row))
     except mysql.connector.Error as err:
-        print("Fail")
+        pass
     finally:
         cursor.close()
         conn.close()
@@ -346,13 +342,10 @@ def release_title(sid):
         """, (sid,))
         
         results = cursor.fetchall()
-        if results:
-            for row in results:
-                print(",".join(str(item) if item is not None else "NULL" for item in row))
-        else:
-            print("Fail")
+        for row in results:
+            print(",".join(str(item) if item is not None else "NULL" for item in row))
     except mysql.connector.Error as err:
-        print("Fail")
+        pass
     finally:
         cursor.close()
         conn.close()
@@ -372,11 +365,10 @@ def active_viewer(n, start_date, end_date):
         """, (start_date, end_date, n))
         
         results = cursor.fetchall()
-        if results:
-            for row in results:
-                print(",".join(str(item) if item is not None else "NULL" for item in row))
+        for row in results:
+            print(",".join(str(item) if item is not None else "NULL" for item in row))
     except mysql.connector.Error as err:
-        print("Fail")
+        pass
     finally:
         cursor.close()
         conn.close()
@@ -397,13 +389,10 @@ def videos_viewed(rid):
         """, (rid,))
         
         results = cursor.fetchall()
-        if results:
-            for row in results:
-                print(",".join(str(item) if item is not None else "NULL" for item in row))
-        else:
-            print("Fail")
+        for row in results:
+            print(",".join(str(item) if item is not None else "NULL" for item in row))
     except mysql.connector.Error as err:
-        print("Fail")
+        pass
     finally:
         cursor.close()
         conn.close()
