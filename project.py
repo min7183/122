@@ -369,7 +369,6 @@ def active_viewer(n, start_date, end_date):
     conn = connect_db()
     cursor = conn.cursor()
     output_lines = []
-    print(n, start_date, end_date)
     try:
         cursor.execute("""
             SELECT v.uid, v.first_name, v.last_name
@@ -383,6 +382,8 @@ def active_viewer(n, start_date, end_date):
         results = cursor.fetchall()
         for row in results:
             output_lines.append(",".join(str(item) if item is not None else "NULL" for item in row))
+        print(n, start_date, end_date)
+
     except mysql.connector.Error as err:
         print("Fail")
         return
