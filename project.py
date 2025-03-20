@@ -405,33 +405,40 @@ def active_viewer(n, start_date, end_date):
     sys.stdout.write("\n".join(output_lines))
 
 def videos_viewed(rid):
-    """
-    For a given video (by its release id), counts the number of unique viewers that have started a session on it.
-    Output: rid, ep_num, title, length, viewer_count
-    If no sessions exist for the video, output "Fail".
-    """
     conn = connect_db()
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            SELECT v.rid, v.ep_num, v.title, v.length, COUNT(DISTINCT s.uid) as viewer_count
+            SELECT v.rid, 
+                   v.ep_num, 
+                   v.title, 
+                   v.length, 
+                   COUNT(DISTINCT vw.uid) AS viewer_count
             FROM videos v
-            LEFT JOIN sessions s ON v.rid = s.rid AND v.ep_num = s.ep_num
+            LEFT JOIN sessions s 
+                   ON (v.rid = s.rid AND v.ep_num = s.ep_num)
+            LEFT JOIN viewers vw 
+                   ON (s.uid = vw.uid)
             WHERE v.rid = %s
             GROUP BY v.rid, v.ep_num, v.title, v.length
             ORDER BY v.ep_num ASC
         """, (rid,))
+
         results = cursor.fetchall()
         if results:
             for row in results:
-                print(",".join(str(item) if item is not None else "NULL" for item in row))
+                print(",".join(str(x) if x is not None else "NULL" for x in row))
         else:
+            # The spec says "print Fail if no sessions exist" for that video.
             print("Fail")
-    except mysql.connector.Error as err:
-        print("Fail", err)
+
+    except mysql.connector.Error:
+        # Table output function => spec says "Fail" if there's an error
+        print("Fail")
     finally:
         cursor.close()
         conn.close()
+
 
 def handle_command():
     if len(sys.argv) < 2:
