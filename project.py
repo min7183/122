@@ -102,7 +102,7 @@ def import_data(folder_name):
         
         # Import CSV files (assumes file names exactly match table names)
         # Note: For the table Release, the CSV file should be named Release.csv (without backticks)
-        tables_for_import = ["Viewer", "Release", "TVShow", "Movie", "Video", "Review", "Session"]
+        tables_for_import = ["viewers", "Release", "TVShow", "Movie", "Video", "Review", "Session"]
         for table in tables_for_import:
             csv_path = os.path.join(folder_name, f"{table}.csv")
             if not os.path.exists(csv_path):
@@ -174,7 +174,7 @@ def delete_viewer(uid):
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM Viewer WHERE uid = %s", (uid,))
+        cursor.execute("DELETE FROM viewers WHERE uid = %s", (uid,))
         conn.commit()
         print("Success")
     except mysql.connector.Error as err:
@@ -301,7 +301,7 @@ def active_viewer(n, start_date, end_date):
     try:
         cursor.execute("""
             SELECT v.uid, v.first, v.last
-            FROM viewer v
+            FROM viewers v
             JOIN `Session` s ON v.uid = s.uid
             WHERE s.initiate_at BETWEEN %s AND %s
             GROUP BY v.uid, v.first, v.last
