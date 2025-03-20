@@ -391,7 +391,7 @@ def active_viewer(n, start_date, end_date):
         conn.close()
     
     # Print exactly the result (no extra newline if empty).
-    sys.stdout.write("\n".join(output_lines))
+    # sys.stdout.write("\n".join(output_lines))
 
 def videos_viewed(rid):
     """
