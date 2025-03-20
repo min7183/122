@@ -10,7 +10,7 @@ def import_data(folder_name):
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        # Disable FK checks while dropping/creating tables.
+        # Disable foreign key checks while dropping/creating tables.
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         
         # Drop tables in reverse dependency order.
@@ -28,7 +28,7 @@ def import_data(folder_name):
                 street VARCHAR(255),
                 city VARCHAR(255),
                 state VARCHAR(255),
-                zip VARCHAR(255),
+                `zip` VARCHAR(255),
                 genres VARCHAR(255),
                 joined_date DATE
             );
@@ -135,7 +135,7 @@ def import_data(folder_name):
                 continue
             with open(csv_path, 'r', newline='') as csvfile:
                 csv_reader = csv.reader(csvfile)
-                # Skip header row
+                # Skip header row.
                 next(csv_reader, None)
                 for row in csv_reader:
                     # Replace empty strings with None.
@@ -148,11 +148,12 @@ def import_data(folder_name):
         print("Success")
     except mysql.connector.Error as err:
         conn.rollback()
-        print("Fail")
+        # Print the error message to help diagnose the issue.
+        print("Fail", err)
     finally:
         cursor.close()
         conn.close()
-
+        
 def insert_viewer(uid, email, nickname, street, city, state, zip_code, genres, joined_date, first, last, subscription):
     """
     Inserts a new viewer by adding a record to both the users and viewers tables.
