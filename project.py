@@ -135,6 +135,8 @@ def import_data(folder_name):
                 continue
             with open(csv_path, 'r', newline='') as csvfile:
                 csv_reader = csv.reader(csvfile)
+                # Skip header row
+                next(csv_reader, None)
                 for row in csv_reader:
                     # Replace empty strings with None.
                     row = [None if field == '' else field for field in row]
