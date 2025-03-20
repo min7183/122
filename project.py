@@ -18,7 +18,7 @@ def import_data(folder_name):
         
         # Create tables as specified in the project write-up
         cursor.execute("""
-            CREATE TABLE Viewer (
+            CREATE TABLE viewers  (
                 uid INT PRIMARY KEY,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 nickname VARCHAR(255),
@@ -78,7 +78,7 @@ def import_data(folder_name):
                 comment TEXT,
                 created_at DATETIME,
                 PRIMARY KEY (uid, rid),
-                FOREIGN KEY (uid) REFERENCES Viewer(uid) ON DELETE CASCADE,
+                FOREIGN KEY (uid) REFERENCES viewers(uid) ON DELETE CASCADE,
                 FOREIGN KEY (rid) REFERENCES `Release`(rid) ON DELETE CASCADE
             );
         """)
@@ -93,7 +93,7 @@ def import_data(folder_name):
                 leave_at DATETIME,
                 quality VARCHAR(255),
                 device VARCHAR(255),
-                FOREIGN KEY (uid) REFERENCES Viewer(uid) ON DELETE CASCADE,
+                FOREIGN KEY (uid) REFERENCES viewers(uid) ON DELETE CASCADE,
                 FOREIGN KEY (rid, ep_num) REFERENCES Video(rid, ep_num) ON DELETE CASCADE
             );
         """)
@@ -129,7 +129,7 @@ def insert_viewer(uid, email, nickname, street, city, state, zip_code, genres, j
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            INSERT INTO viewer (uid, email, nickname, street, city, state, zip, genres, joined_date, first, last, subscription)
+            INSERT INTO viewers (uid, email, nickname, street, city, state, zip, genres, joined_date, first, last, subscription)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (uid, email, nickname, street, city, state, zip_code, genres, joined_date, first, last, subscription))
         conn.commit()
@@ -145,7 +145,7 @@ def add_genre(uid, genre):
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT genres FROM Viewer WHERE uid = %s", (uid,))
+        cursor.execute("SELECT genres FROM viewers WHERE uid = %s", (uid,))
         result = cursor.fetchone()
         if result is not None:
             current_genres = result[0]
@@ -158,7 +158,7 @@ def add_genre(uid, genre):
                     updated_genres = current_genres + ";" + genre
             else:
                 updated_genres = genre
-            cursor.execute("UPDATE Viewer SET genres = %s WHERE uid = %s", (updated_genres, uid))
+            cursor.execute("UPDATE viewers SET genres = %s WHERE uid = %s", (updated_genres, uid))
             conn.commit()
             print("Success")
         else:
