@@ -10,7 +10,6 @@ def import_data(folder_name):
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        # Disable FK checks while dropping/creating tables.
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         
         # Drop tables in reverse dependency order.
@@ -137,8 +136,6 @@ def import_data(folder_name):
         """)
         
         cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
-        
-        # Import CSV data.
         tables_for_import = ["users", "viewers", "producers", "releases", "series", "movies", "videos", "reviews", "sessions"]
         for table in tables_for_import:
             csv_path = os.path.join(folder_name, f"{table}.csv")
@@ -374,41 +371,41 @@ def release_title(sid):
         cursor.close()
         conn.close()
 
-def active_viewer(n, start_date, end_date):
-    """
-    Lists all active viewers who have started at least n sessions between start_date and end_date.
-    Output: uid, first_name, last_name
-    """
-    conn = connect_db()
-    cursor = conn.cursor()
-    output_lines = []
+def active_viewer(minimum_sessions, start_date, end_date):
+    database_connection = connect_db()
+    database_cursor = database_connection.cursor()
+    active_users_list = []
+
     try:
-        cursor.execute("""
-            SELECT v.uid, v.first_name, v.last_name
-            FROM viewers v
-            JOIN sessions s ON v.uid = s.uid
-            WHERE s.initiate_at BETWEEN %s AND %s
-            GROUP BY v.uid, v.first_name, v.last_name
-            HAVING COUNT(s.sid) >= %s
-            ORDER BY v.uid ASC
-        """, (start_date, end_date, n))
-        results = cursor.fetchall()
-        for row in results:
-            output_lines.append(",".join(str(item) if item is not None else "NULL" for item in row))
-    except mysql.connector.Error as err:
-        print("Fail", err)
-        return
+        database_cursor.execute("""
+            SELECT viewer.uid, viewer.first_name, viewer.last_name
+            FROM viewers viewer
+            JOIN sessions session ON viewer.uid = session.uid
+            WHERE session.initiate_at BETWEEN %s AND %s
+            GROUP BY viewer.uid, viewer.first_name, viewer.last_name
+            HAVING COUNT(session.sid) >= %s
+            ORDER BY viewer.uid ASC
+        """, (start_date, end_date, minimum_sessions))
+
+        matching_viewers = database_cursor.fetchall()
+
+        for viewer in matching_viewers:
+            formatted_viewer = ",".join(str(detail) if detail is not None else "NULL" for detail in viewer)
+            print(formatted_viewer)
+
+    except mysql.connector.Error:
+        print("Fail")
     finally:
-        cursor.close()
-        conn.close()
-    
-    sys.stdout.write("\n".join(output_lines))
+        database_cursor.close()
+        database_connection.close()
+
 
 def videos_viewed(rid):
     conn = connect_db()
     cursor = conn.cursor()
     try:
         cursor.execute("""
+<<<<<<< HEAD
             SELECT v.rid, 
                    v.ep_num, 
                    v.title, 
@@ -422,14 +419,38 @@ def videos_viewed(rid):
             ORDER BY v.ep_num ASC
         """, (rid,))
     
+=======
+            SELECT COUNT(DISTINCT s.uid) 
+            FROM sessions s 
+            WHERE s.rid = %s
+        """, (rid,))
+        viewer_count = cursor.fetchone()[0]
+
+        cursor.execute("""
+            SELECT rid, ep_num, title, length
+            FROM videos
+            WHERE rid = %s
+            ORDER BY ep_num ASC
+        """, (rid,))
+        
+>>>>>>> 41451a4e606a2313c896bac6d2e3242db8966e22
         results = cursor.fetchall()
+        
         if results:
             for row in results:
+<<<<<<< HEAD
                 print(",".join(str(x) if x is not None else "NULL" for x in row))
         else:
             print("Fail")
     
     except mysql.connector.Error:
+=======
+                full_row = list(row) + [viewer_count]
+                print(",".join(str(item) if item is not None else "NULL" for item in full_row))
+        else:
+            print("Fail")
+    except mysql.connector.Error as err:
+>>>>>>> 41451a4e606a2313c896bac6d2e3242db8966e22
         print("Fail")
     finally:
         cursor.close()
@@ -446,7 +467,6 @@ def handle_command():
     if command == "import":
         import_data(args[0])
     elif command == "insertViewer":
-        # Expected order: uid, email, nickname, street, city, state, zip, genres, joined_date, first_name, last_name, subscription
         insert_viewer(int(args[0]), args[1], args[2], args[3], args[4], args[5],
                       args[6], args[7], args[8], args[9], args[10], args[11])
     elif command == "addGenre":
