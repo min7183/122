@@ -12,14 +12,10 @@ def import_data(folder_name):
     try:
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
         
-        # Drop tables in reverse dependency order.
         drop_tables = ["sessions", "reviews", "videos", "movies", "series", "releases", "viewers", "producers", "users"]
         for table in drop_tables:
             cursor.execute(f"DROP TABLE IF EXISTS {table};")
         
-        # Create tables.
-        # 1. users table.
-        # CSV order: uid, email, joined_date, nickname, street, city, state, `zip`, genres
         cursor.execute("""
             CREATE TABLE users (
                 uid INT PRIMARY KEY,
@@ -34,8 +30,6 @@ def import_data(folder_name):
             );
         """)
         
-        # 2. viewers table.
-        # CSV: uid, subscription, first_name, last_name
         cursor.execute("""
             CREATE TABLE viewers (
                 uid INT PRIMARY KEY,
@@ -46,8 +40,6 @@ def import_data(folder_name):
             );
         """)
         
-        # 3. producers table.
-        # CSV: uid, bio, company
         cursor.execute("""
             CREATE TABLE producers (
                 uid INT PRIMARY KEY,
@@ -57,8 +49,6 @@ def import_data(folder_name):
             );
         """)
         
-        # 4. releases table.
-        # CSV: rid, producer_uid, title, genre, release_date
         cursor.execute("""
             CREATE TABLE releases (
                 rid INT PRIMARY KEY,
@@ -70,8 +60,6 @@ def import_data(folder_name):
             );
         """)
         
-        # 5. series table.
-        # CSV: rid, introduction
         cursor.execute("""
             CREATE TABLE series (
                 rid INT PRIMARY KEY,
@@ -80,8 +68,6 @@ def import_data(folder_name):
             );
         """)
         
-        # 6. movies table.
-        # CSV: rid, website_url
         cursor.execute("""
             CREATE TABLE movies (
                 rid INT PRIMARY KEY,
@@ -90,8 +76,6 @@ def import_data(folder_name):
             );
         """)
         
-        # 7. videos table.
-        # CSV: rid, ep_num, title, length
         cursor.execute("""
             CREATE TABLE videos (
                 rid INT,
@@ -103,8 +87,6 @@ def import_data(folder_name):
             );
         """)
         
-        # 8. reviews table.
-        # CSV: rvid, uid, rid, rating, body, posted_at
         cursor.execute("""
             CREATE TABLE reviews (
                 rvid INT PRIMARY KEY,
@@ -118,8 +100,6 @@ def import_data(folder_name):
             );
         """)
         
-        # 9. sessions table.
-        # CSV: sid, uid, rid, ep_num, initiate_at, leave_at, quality, device
         cursor.execute("""
             CREATE TABLE sessions (
                 sid INT PRIMARY KEY,
@@ -143,7 +123,6 @@ def import_data(folder_name):
                 continue
             with open(csv_path, 'r', newline='') as csvfile:
                 csv_reader = csv.reader(csvfile)
-                # Skip header row.
                 next(csv_reader, None)
                 for row in csv_reader:
                     row = [None if field == '' else field for field in row]
@@ -169,7 +148,6 @@ def insert_viewer(uid, email, nickname, street, city, state, zip_code, genres, j
     conn = connect_db()
     cursor = conn.cursor()
     try:
-        # Rearranging parameters for the users table.
         cursor.execute("""
             INSERT INTO users (uid, email, joined_date, nickname, street, city, state, `zip`, genres)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -190,10 +168,6 @@ def insert_viewer(uid, email, nickname, street, city, state, zip_code, genres, j
         conn.close()
 
 def add_genre(uid, genre):
-    """
-    Adds a new genre to the user's genres field in the users table.
-    If the genre already exists (case-insensitively), output "Fail".
-    """
     conn = connect_db()
     cursor = conn.cursor()
     try:
@@ -222,10 +196,6 @@ def add_genre(uid, genre):
         conn.close()
 
 def delete_viewer(uid):
-    """
-    Deletes a viewer.
-    Deletes from viewers and then from users.
-    """
     conn = connect_db()
     cursor = conn.cursor()
     try:
@@ -241,9 +211,6 @@ def delete_viewer(uid):
         conn.close()
 
 def insert_movie(rid, website_url):
-    """
-    Inserts a new movie record.
-    """
     conn = connect_db()
     cursor = conn.cursor()
     try:
@@ -258,9 +225,6 @@ def insert_movie(rid, website_url):
         conn.close()
 
 def insert_session(sid, uid, rid, ep_num, initiate_at, leave_at, quality, device):
-    """
-    Inserts a new session record.
-    """
     conn = connect_db()
     cursor = conn.cursor()
     try:
@@ -278,9 +242,6 @@ def insert_session(sid, uid, rid, ep_num, initiate_at, leave_at, quality, device
         conn.close()
 
 def update_release(rid, title):
-    """
-    Updates the title of a release.
-    """
     conn = connect_db()
     cursor = conn.cursor()
     try:
@@ -295,10 +256,6 @@ def update_release(rid, title):
         conn.close()
 
 def list_releases(uid):
-    """
-    Lists all unique releases reviewed by a given viewer (uid) in ascending order by release title.
-    Output: rid, genre, title
-    """
     conn = connect_db()
     cursor = conn.cursor()
     try:
@@ -319,10 +276,6 @@ def list_releases(uid):
         conn.close()
 
 def popular_release(n):
-    """
-    Lists the top N releases that have the most reviews.
-    Output: rid, title, reviewCount
-    """
     conn = connect_db()
     cursor = conn.cursor()
     try:
@@ -344,10 +297,6 @@ def popular_release(n):
         conn.close()
 
 def release_title(sid):
-    """
-    Given a session id, finds the release and corresponding video.
-    Output: rid, release_title, genre, video_title, ep_num, length
-    """
     conn = connect_db()
     cursor = conn.cursor()
     try:
